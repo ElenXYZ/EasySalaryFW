@@ -11,6 +11,7 @@ namespace EasySalaryFW.SL.ReportService
 {
     public class ReportService
     {
+        const int defaultYear = 2021;
         public ReportService() { }
         /// <summary>
         /// Список филиалов в алфавитном порядке
@@ -80,7 +81,7 @@ namespace EasySalaryFW.SL.ReportService
         /// <param name="month">месяц отчета</param>
         /// <param name="year">год отчета</param>
         /// <returns></returns>
-        public IEnumerable<EmployeeMonthSalaryReport> GetMonthSalaryByFilialBranch(IEnumerable<Timesheet> timesheets, IEnumerable<Employee> employees, int IdFilial, int IdBranch, int month, int year)
+        public IEnumerable<EmployeeMonthSalaryReport> GetMonthSalaryByFilialBranch(IEnumerable<Timesheet> timesheets, IEnumerable<Employee> employees, int IdFilial, int IdBranch, int month, int year = defaultYear)
         {
             SS.SalaryService salaryService = new SS.SalaryService();
             DateTime currentDay = new DateTime(year, month, DateTime.DaysInMonth(year, month));
@@ -100,7 +101,16 @@ namespace EasySalaryFW.SL.ReportService
               .OrderBy(x => x.Fio);
             return result;
         }
-        public IEnumerable<EmployeeMonthSalaryReport> GetMonthSalaryMore(IEnumerable<Timesheet> timesheets, IEnumerable<Employee> employees, int month, int year, decimal minSalary)
+        /// <summary>
+        /// Список сотрудников с заработной платой в текущем месяце > minSalary
+        /// </summary>
+        /// <param name="timesheets"></param>
+        /// <param name="employees"></param>
+        /// <param name="month"></param>
+        /// <param name="year"></param>
+        /// <param name="minSalary"></param>
+        /// <returns></returns>
+        public IEnumerable<EmployeeMonthSalaryReport> GetMonthSalaryMore(IEnumerable<Timesheet> timesheets, IEnumerable<Employee> employees,  decimal minSalary, int month, int year = defaultYear)
         {
             SS.SalaryService salaryService = new SS.SalaryService();
             DateTime currentDay = new DateTime(year, month, DateTime.DaysInMonth(year, month));
@@ -117,6 +127,13 @@ namespace EasySalaryFW.SL.ReportService
               .OrderBy(x => x.Fio);
             return result;
         }
+        /// <summary>
+        /// Список N-сотрудников с максимальными зп
+        /// </summary>
+        /// <param name="timesheets"></param>
+        /// <param name="employees"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
         public IEnumerable<Employee> GetEmployeeWithMaxSalary(IEnumerable<Timesheet> timesheets, IEnumerable<Employee> employees, int count)
         {
             SS.SalaryService salaryService = new SS.SalaryService();
@@ -127,20 +144,27 @@ namespace EasySalaryFW.SL.ReportService
               e => e.Id,
               (t, e) => new
               {
-                  Employee =e,
+                  Employee = e,
                   MonthSalary = salaryService.Calc(e.SalaryType, e.Salary, t.CountHour)
               })
               .OrderByDescending(x => x.MonthSalary)
               .Take(count);
 
-            return result.Select(x=>x.Employee);
+            return result.Select(x => x.Employee);
         }
-
-        public IEnumerable<Employee> GetEmployeeWhoWorkAllHours(IEnumerable<Timesheet> timesheets, IEnumerable<Employee> employees, int month, int year)
+        /// <summary>
+        /// Список сотрудников на окладе, которые отработали  все требуемые часы
+        /// </summary>
+        /// <param name="timesheets"></param>
+        /// <param name="employees"></param>
+        /// <param name="month"></param>
+        /// <param name="year"></param>
+        /// <returns></returns>
+        public IEnumerable<Employee> GetEmployeeWhoWorkAllHours(IEnumerable<Timesheet> timesheets, IEnumerable<Employee> employees, int month, int year = defaultYear)
         {
             DateTime currentDay = new DateTime(year, month, DateTime.DaysInMonth(year, month));
             var result = timesheets.Where(x => x.Day == currentDay)
-              .Join(employees,
+              .Join(employees.Where(x => x.SalaryType == SalaryTypeEnum.Fixed),
               t => t.IdEmployee,
               e => e.Id,
               (t, e) => new
@@ -152,7 +176,12 @@ namespace EasySalaryFW.SL.ReportService
               .OrderBy(x => x.Employee.Fio);
             return result.Select(x => x.Employee);
         }
-
+        /// <summary>
+        /// Список филиалов с указанием средней зарплаты в филиале
+        /// </summary>
+        /// <param name="filials"></param>
+        /// <param name="employees"></param>
+        /// <returns></returns>
         public IEnumerable<FilialAvgSalaryReport> GetAvgSalary(IEnumerable<Filial> filials, IEnumerable<Employee> employees)
         {
             var result = employees.GroupBy(x => x.IdFilial).Select(g => new { Key = g.Key, AvgSalary = g.Average(x => x.Salary) })
@@ -163,19 +192,6 @@ namespace EasySalaryFW.SL.ReportService
               .OrderBy(x => x.FilialName);
             return result;
         }
-
-        //public IEnumerable<Employee> GetEmployeesBySalary(int month, int year, decimal minSalary, IEnumerable<Employee> employees, IEnumerable<Timesheet> timesheets)
-        //{
-        //    DateTime dayTimesheet = new DateTime();
-        //    try
-        //    {
-        //        dayTimesheet = new DateTime(year, month, DateTime.DaysInMonth(year, month));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        throw new ArgumentException($"Некорректно указан месяц или год учета рабочего времени: {month}.{year}");
-        //    }
-        //    var curTimesheets = timesheets.Where(x => x.Day == dayTimesheet);
-        //}
+    
     }
 }
